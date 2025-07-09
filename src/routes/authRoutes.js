@@ -8,5 +8,7 @@ router.post("/register-learner", registerLearner);
 router.post("/register-instructor", registerInstructor);
 // Login (for both roles)
 router.post("/login", login);
+// Resend OTP
+
 
 module.exports = router;

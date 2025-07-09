@@ -1,6 +1,8 @@
 // src/controllers/authController.js (add this function)
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const Otp = require("../models/Otp");
+require("dotenv").config();
 const InstructorProfile = require("../models/InstructorProfile");
 
 // Register a new learner (student)
@@ -92,9 +94,99 @@ const login = async (req, res) => {
   }
 };
 
+//Login
+
+const sendOtp = async(req, res) => {
+  try {
+    const { identifier } = req.body; // email or phone
+    // Check if user exists by email or mobile
+    const user = await User.findOne({ $or: [ { email: identifier }, { mobile: identifier } ] });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for this identifier.' });
+    }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // Generate a 6-digit OTP
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+
+    // Save OTP to database
+    const otpEntry = new Otp({ identifier, otp, expiresAt });
+    await otpEntry.save();
+
+    // Here you would send the OTP via email or SMS (not implemented in this example)
+    res.status(200).json({ message: `OTP ${otpEntry} sent to ${identifier}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to send OTP.' });
+  }
+}
+
+const verifyOtp = async(req, res) => {
+  try{
+    const { identifier, otp } = req.body; // email or phone and OTP
+    const otpEntry = await Otp.findOne({ identifier, otp });
+
+    if (!otpEntry) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+
+    if (otpEntry.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'OTP has expired.' });
+    }
+
+    // OTP is valid, delete it from the database
+    await Otp.deleteOne({ _id: otpEntry._id });
+
+    // Find user by email or mobile
+    let user = await User.findOne({ $or: [ { email: identifier }, { mobile: identifier } ] });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for this identifier.' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({ message: 'OTP verified successfully.', token });
+
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to verify OTP.' });
+  }
+}
+
+const resendOtp = async (req, res) => {
+  try {
+    const { identifier } = req.body;
+    // Check if user exists by email or mobile
+    const user = await User.findOne({ $or: [ { email: identifier }, { mobile: identifier } ] });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found for this identifier.' });
+    }
+    // Delete any existing OTP for this identifier
+    await Otp.deleteMany({ identifier });
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    // Save new OTP
+    const otpEntry = new Otp({ identifier, otp, expiresAt });
+    await otpEntry.save();
+    // Here you would send the OTP via email or SMS (not implemented)
+    res.status(200).json({ message: `OTP: ${otpEntry} resent to ${identifier}` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to resend OTP.' });
+  }
+}
+
 module.exports = {
   registerLearner,
   registerInstructor,
   login,
+  sendOtp,
+  verifyOtp,
+  resendOtp
 };
 
