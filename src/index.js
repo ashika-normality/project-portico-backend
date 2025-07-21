@@ -10,9 +10,10 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: 'http://localhost:3000', // Frontend default port
+  origin: ['http://localhost:3000', 'https://project-portico-frontend.vercel.app'], // Frontend default port
   credentials: true
 }));
+app.use('/uploads', express.static('uploads'));
 
 // Routes
 // Auth routes: /api/auth/register-learner, /api/auth/register-instructor, /api/auth/login

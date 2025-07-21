@@ -8,7 +8,7 @@ const instructorProfileSchema = new mongoose.Schema({
   drivingSchoolName: { type: String },
   website: { type: String },
   bio: { type: String },
-  photographUrl: { type: String }, // Store file URL or path
+  profilePhotoUrl: { type: String }, // Store file URL or path
   // Address fields (duplicated for convenience, or can be referenced from User)
   address: {
     line1: String,

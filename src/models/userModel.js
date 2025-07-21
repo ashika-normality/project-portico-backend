@@ -5,6 +5,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['instructor', 'learner'], required: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
+  givenName: { type: String, required: true }, // Optional field for instructors
+  nickName: { type: String}, // Optional field for instructors
   email: { type: String, required: true, unique: true },
   mobile: { type: String, required: true },
   address: {
@@ -16,7 +18,8 @@ const userSchema = new mongoose.Schema({
     postcode: String,
   },
   profilePhotoUrl: String,
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  refreshTokens: [String] // Store multiple refresh tokens per user
 });
 
 userSchema.index({ "address.location": "2dsphere" });
