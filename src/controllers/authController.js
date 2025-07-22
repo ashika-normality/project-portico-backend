@@ -177,26 +177,38 @@ const verifyOtp = async(req, res) => {
 const resendOtp = async (req, res) => {
   try {
     const { identifier } = req.body;
-    // Check if user exists by email or mobile
-    const user = await User.findOne({ $or: [ { email: identifier }, { mobile: identifier } ] });
-    if (!user) {
+
+    // Check if user exists in either User (login) or PendingRegistration (signup)
+    const [user, pendingUser] = await Promise.all([
+      User.findOne({ $or: [{ email: identifier }, { mobile: identifier }] }),
+      PendingRegistration.findOne({ $or: [{identifier: identifier}, { email: identifier }, { mobile: identifier }] })
+    ]);
+
+    if (!user && !pendingUser) {
       return res.status(404).json({ message: 'User not found for this identifier.' });
     }
+
     // Delete any existing OTP for this identifier
     await Otp.deleteMany({ identifier });
+
     // Generate new OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
     // Save new OTP
     const otpEntry = new Otp({ identifier, otp, expiresAt });
     await otpEntry.save();
-    // Here you would send the OTP via email or SMS (not implemented)
-    res.status(200).json({ message: `OTP: ${otpEntry} resent to ${identifier}` });
+
+    // Send OTP via email/SMS (mock response)
+    res.status(200).json({ 
+      message: `OTP resent to ${identifier}`,
+      otp: otp // (Remove this in production! Only for testing.)
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to resend OTP.' });
   }
-}
+};
 
 // Refresh token endpoint
 const refreshToken = async (req, res) => {
