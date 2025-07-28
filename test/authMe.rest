@@ -1,0 +1,2 @@
+GET http://localhost:7002/api/instructor-profile/me
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ODI3MDZlMzY2YmE5OTBmM2JiMmRjMiIsInJvbGUiOiJpbnN0cnVjdG9yIiwiaWF0IjoxNzUzMzc4OTU1LCJleHAiOjE3NTM0NjUzNTV9.oe02jxkV6CQE4kI6Ye5_sxx4ueaaVpCR3jpgn1LaNKs

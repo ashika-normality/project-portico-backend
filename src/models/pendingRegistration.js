@@ -3,7 +3,6 @@ const mongoose = require('mongoose');
 const pendingRegistrationSchema = new mongoose.Schema({
   identifier: String, // email or phone
   registrationData: Object,
-  fileName: String, // store uploaded file name if any
   createdAt: { type: Date, default: Date.now, expires: 600 } // auto-delete after 10 min
 });
 

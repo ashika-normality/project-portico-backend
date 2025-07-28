@@ -5,8 +5,7 @@ const Otp = require("../models/Otp");
 require("dotenv").config();
 const InstructorProfile = require("../models/InstructorProfile");
 const PendingRegistration = require("../models/pendingRegistration");
-const fs = require('fs');
-const path = require('path');
+
 
 // Register a new learner (student)
 const registerLearner = async (req, res) => {
@@ -80,12 +79,12 @@ const generateTokens = (user) => {
   const accessToken = jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: '3d' }
+    { expiresIn: '1d' }
   );
   const refreshToken = jwt.sign(
     { id: user._id, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: '20d' }
+    { expiresIn: '5d' }
   );
   return { accessToken, refreshToken };
 };
@@ -233,7 +232,7 @@ const refreshToken = async (req, res) => {
     const accessToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '3d' }
+      { expiresIn: '1d' }
     );
     res.status(200).json({ accessToken });
   } catch (err) {
@@ -253,18 +252,25 @@ const registerInstructorInitiate = async (req, res) => {
     }
     // Remove any previous pending registration for this identifier
     await PendingRegistration.deleteMany({ identifier: email });
-    // Save file if present
-    let fileName = null;
-    if (req.file) {
-      fileName = req.file.filename;
-    }
+     const getFileName = (field) => {
+      return req.files && req.files[field] && req.files[field][0]
+        ? req.files[field][0].filename
+        : null;
+    };
+
+    const fileUploads = {
+      profileImage: getFileName('profileImage'),
+      drivingLicenseFront: getFileName('drivingLicenseFront'),
+      drivingLicenseBack: getFileName('drivingLicenseBack'),
+      instructorLicenseFront: getFileName('instructorLicenseFront'),
+      instructorLicenseBack: getFileName('instructorLicenseBack')
+    };
     // Save registration data to pending collection
     const pending = new PendingRegistration({
       identifier: email,
       registrationData: {
-        firstName, lastName, givenName, nickName, email, mobile, address, drivingLicenseNumber, instructorLicenseNumber, wwccNumber, drivingSchoolName, website, bio
+        firstName, lastName, givenName, nickName, email, mobile, address, drivingLicenseNumber, instructorLicenseNumber, wwccNumber, drivingSchoolName, website, bio, ...fileUploads
       },
-      fileName
     });
     await pending.save();
     // Generate and save OTP
@@ -284,7 +290,8 @@ const registerInstructorInitiate = async (req, res) => {
 const registerInstructorVerify = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    // Check OTP
+
+    // 1. Verify OTP
     const otpEntry = await Otp.findOne({ identifier: email, otp });
     if (!otpEntry) {
       return res.status(400).json({ message: 'Invalid OTP.' });
@@ -292,13 +299,17 @@ const registerInstructorVerify = async (req, res) => {
     if (otpEntry.expiresAt < new Date()) {
       return res.status(400).json({ message: 'OTP has expired.' });
     }
-    // Find pending registration
+
+    // 2. Fetch pending registration data
     const pending = await PendingRegistration.findOne({ identifier: email });
     if (!pending) {
       return res.status(400).json({ message: 'No pending registration found.' });
     }
+
     const data = pending.registrationData;
-    // Create user
+    const files = pending.registrationData.fileUploads || {}; // fallback if key not present
+
+    // 3. Create User
     const newUser = new User({
       firstName: data.firstName,
       lastName: data.lastName,
@@ -310,12 +321,10 @@ const registerInstructorVerify = async (req, res) => {
       role: 'instructor',
     });
     await newUser.save();
-    // Move file if present
-    let profilePhotoUrl = null;
-    if (pending.fileName) {
-      profilePhotoUrl = `/uploads/${pending.fileName}`;
-    }
-    // Create instructor profile
+
+    // 4. Prepare file URLs (check for presence)
+    const fileUrl = (fileName) => fileName ? `/uploads/${fileName}` : null;
+
     const instructorProfile = new InstructorProfile({
       user: newUser._id,
       drivingLicenseNumber: data.drivingLicenseNumber,
@@ -324,19 +333,27 @@ const registerInstructorVerify = async (req, res) => {
       drivingSchoolName: data.drivingSchoolName,
       website: data.website,
       bio: data.bio,
-      profilePhotoUrl,
       address: data.address,
+      profilePhotoUrl: fileUrl(files.profileImage),
+      drivingLicenseFrontUrl: fileUrl(files.drivingLicenseFront),
+      drivingLicenseBackUrl: fileUrl(files.drivingLicenseBack),
+      instructorLicenseFrontUrl: fileUrl(files.instructorLicenseFront),
+      instructorLicenseBackUrl: fileUrl(files.instructorLicenseBack),
     });
     await instructorProfile.save();
-    // Clean up
+
+    // 5. Clean up
     await Otp.deleteMany({ identifier: email });
     await PendingRegistration.deleteOne({ identifier: email });
+
     res.status(201).json({ message: `Instructor account for ${email} created successfully!` });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to complete registration.' });
   }
 };
+
 
 module.exports = {
   registerLearner,

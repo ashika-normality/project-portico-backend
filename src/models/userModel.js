@@ -5,7 +5,6 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['instructor', 'learner'], required: true },
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
-  givenName: { type: String, required: true }, // Optional field for instructors
   nickName: { type: String}, // Optional field for instructors
   email: { type: String, required: true, unique: true },
   mobile: { type: String, required: true },

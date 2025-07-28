@@ -8,7 +8,6 @@ const instructorProfileSchema = new mongoose.Schema({
   drivingSchoolName: { type: String },
   website: { type: String },
   bio: { type: String },
-  profilePhotoUrl: { type: String }, // Store file URL or path
   // Address fields (duplicated for convenience, or can be referenced from User)
   address: {
     line1: String,
@@ -18,6 +17,12 @@ const instructorProfileSchema = new mongoose.Schema({
     country: String,
     postcode: String,
   },
+  profileImage: { type: String }, // Store file URL or path
+  drivingLicenseFront: { type: String }, // Store file URL or path
+  drivingLicenseBack: { type: String }, // Store file URL or path
+  instructorLicenseFront: { type: String }, // Store file URL or path
+  instructorLicenseBack: { type: String }, // Store file URL or path
+  
   createdAt: { type: Date, default: Date.now }
 });
 
