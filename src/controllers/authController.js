@@ -1,7 +1,7 @@
 // src/controllers/authController.js (add this function)
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
-const Otp = require("../models/Otp");
+const Otp = require("../models/otp");
 require("dotenv").config();
 const InstructorProfile = require("../models/InstructorProfile");
 const PendingRegistration = require("../models/pendingRegistration");
@@ -128,7 +128,17 @@ const sendOtp = async(req, res) => {
     await otpEntry.save();
 
     // Here you would send the OTP via email or SMS (not implemented in this example)
-    res.status(200).json({ message: `OTP ${otpEntry} sent to ${identifier}` });
+    // In your backend controller
+    const otpResponse = {
+      message: `OTP sent to ${otpEntry.identifier}`,
+      data: {
+        identifier: otpEntry.identifier,
+        otp: otpEntry.otp, // Only include this if needed for testing
+        expiresAt: otpEntry.expiresAt,
+      }
+    };
+
+    res.status(200).json(otpResponse);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to send OTP.' });
@@ -199,10 +209,16 @@ const resendOtp = async (req, res) => {
     await otpEntry.save();
 
     // Send OTP via email/SMS (mock response)
-    res.status(200).json({ 
-      message: `OTP resent to ${identifier}`,
-      otp: otp // (Remove this in production! Only for testing.)
-    });
+    const otpResponse = {
+      message: `OTP sent to ${otpEntry.identifier}`,
+      data: {
+        identifier: otpEntry.identifier,
+        otp: otpEntry.otp, // Only include this if needed for testing
+        expiresAt: otpEntry.expiresAt,
+      }
+    };
+
+    res.status(200).json(otpResponse);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to resend OTP.' });
@@ -241,18 +257,35 @@ const refreshToken = async (req, res) => {
   }
 };
 
-// Initiate instructor registration: store data, send OTP, save file
+// In registerInstructorInitiate function:
 const registerInstructorInitiate = async (req, res) => {
   try {
-    const { firstName, lastName, givenName, nickName, email, mobile, address, drivingLicenseNumber, instructorLicenseNumber, wwccNumber, drivingSchoolName, website, bio } = req.body;
-    // Check if email already exists
+    // Extract address components separately
+    const { 
+      firstName, lastName, givenName, nickName, email, mobile,
+      addressLine1, addressLine2, city, state, country, postcode,
+      drivingLicenseNumber, instructorLicenseNumber, wwccNumber, 
+      drivingSchoolName, website, bio 
+    } = req.body;
+
+    // Check if email exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered.' });
     }
-    // Remove any previous pending registration for this identifier
-    await PendingRegistration.deleteMany({ identifier: email });
-     const getFileName = (field) => {
+
+    // Construct address object
+    const address = {
+      line1: addressLine1,
+      line2: addressLine2,
+      city,
+      state,
+      country,
+      postcode
+    };
+
+    // Handle file uploads
+    const getFileName = (field) => {
       return req.files && req.files[field] && req.files[field][0]
         ? req.files[field][0].filename
         : null;
@@ -261,55 +294,64 @@ const registerInstructorInitiate = async (req, res) => {
     const fileUploads = {
       profileImage: getFileName('profileImage'),
       drivingLicenseFront: getFileName('drivingLicenseFront'),
-      drivingLicenseBack: getFileName('drivingLicenseBack'),
-      instructorLicenseFront: getFileName('instructorLicenseFront'),
-      instructorLicenseBack: getFileName('instructorLicenseBack')
+      drivingLicenseBack: getFileName('drivingLicenseBack')
     };
-    // Save registration data to pending collection
+
+    // Save to pending registration
     const pending = new PendingRegistration({
       identifier: email,
       registrationData: {
-        firstName, lastName, givenName, nickName, email, mobile, address, drivingLicenseNumber, instructorLicenseNumber, wwccNumber, drivingSchoolName, website, bio, ...fileUploads
+        firstName, lastName, givenName, nickName, email, mobile, 
+        address, // Now properly structured
+        drivingLicenseNumber, instructorLicenseNumber, wwccNumber,
+        drivingSchoolName, website, bio,
+        ...fileUploads
       },
     });
     await pending.save();
+
     // Generate and save OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const otpEntry = new Otp({ identifier: email, otp, expiresAt });
     await otpEntry.save();
-    // Here you would send the OTP via email or SMS (not implemented)
-    res.status(200).json({ message: `OTP sent to ${email}. Please verify to complete registration.` });
+
+    const otpResponse = {
+      message: `OTP sent to ${otpEntry.identifier}`,
+      data: {
+        identifier: otpEntry.identifier,
+        otp: otpEntry.otp, // Only include this if needed for testing
+        expiresAt: otpEntry.expiresAt,
+      }
+    };
+
+    res.status(200).json(otpResponse);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to initiate registration.' });
   }
 };
 
-// Verify OTP and complete instructor registration
+// In registerInstructorVerify function:
 const registerInstructorVerify = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    // 1. Verify OTP
+    // Verify OTP
     const otpEntry = await Otp.findOne({ identifier: email, otp });
-    if (!otpEntry) {
-      return res.status(400).json({ message: 'Invalid OTP.' });
-    }
-    if (otpEntry.expiresAt < new Date()) {
-      return res.status(400).json({ message: 'OTP has expired.' });
+    if (!otpEntry || otpEntry.expiresAt < new Date()) {
+      return res.status(400).json({ message: 'Invalid or expired OTP.' });
     }
 
-    // 2. Fetch pending registration data
+    // Get pending registration
     const pending = await PendingRegistration.findOne({ identifier: email });
     if (!pending) {
       return res.status(400).json({ message: 'No pending registration found.' });
     }
 
     const data = pending.registrationData;
-    const files = pending.registrationData.fileUploads || {}; // fallback if key not present
 
-    // 3. Create User
+    // Create User with properly structured address
     const newUser = new User({
       firstName: data.firstName,
       lastName: data.lastName,
@@ -317,14 +359,12 @@ const registerInstructorVerify = async (req, res) => {
       nickName: data.nickName,
       email: data.email,
       mobile: data.mobile,
-      address: data.address,
+      address: data.address, // Already properly structured
       role: 'instructor',
     });
     await newUser.save();
 
-    // 4. Prepare file URLs (check for presence)
-    const fileUrl = (fileName) => fileName ? `/uploads/${fileName}` : null;
-
+    // Create Instructor Profile
     const instructorProfile = new InstructorProfile({
       user: newUser._id,
       drivingLicenseNumber: data.drivingLicenseNumber,
@@ -333,21 +373,18 @@ const registerInstructorVerify = async (req, res) => {
       drivingSchoolName: data.drivingSchoolName,
       website: data.website,
       bio: data.bio,
-      address: data.address,
-      profilePhotoUrl: fileUrl(files.profileImage),
-      drivingLicenseFrontUrl: fileUrl(files.drivingLicenseFront),
-      drivingLicenseBackUrl: fileUrl(files.drivingLicenseBack),
-      instructorLicenseFrontUrl: fileUrl(files.instructorLicenseFront),
-      instructorLicenseBackUrl: fileUrl(files.instructorLicenseBack),
+      address: data.address, // Same structure
+      profilePhotoUrl: data.profileImage ? `/uploads/${data.profileImage}` : null,
+      drivingLicenseFrontUrl: data.drivingLicenseFront ? `/uploads/${data.drivingLicenseFront}` : null,
+      drivingLicenseBackUrl: data.drivingLicenseBack ? `/uploads/${data.drivingLicenseBack}` : null
     });
     await instructorProfile.save();
 
-    // 5. Clean up
+    // Clean up
     await Otp.deleteMany({ identifier: email });
     await PendingRegistration.deleteOne({ identifier: email });
 
-    res.status(201).json({ message: `Instructor account for ${email} created successfully!` });
-
+    res.status(201).json({ message: 'Registration completed successfully!' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to complete registration.' });

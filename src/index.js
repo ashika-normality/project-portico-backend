@@ -5,9 +5,17 @@ const authRoutes = require("./routes/authRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const instructorProfileRoutes = require("./routes/instructorProfileRoutes");
 const cors = require('cors');
-dbConnect();
+
+
 
 const app = express();
+
+
+dbConnect().catch(err => {
+  console.error('Failed to connect to database:', err);
+});
+
+
 // Middleware
 app.use(express.json());
 app.use(cors({
