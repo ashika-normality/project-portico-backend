@@ -170,8 +170,7 @@ const verifyOtp = async(req, res) => {
     // Generate tokens
     const { accessToken, refreshToken } = generateTokens(user);
     // Save refresh token to user
-    user.refreshTokens = user.refreshTokens || [];
-    user.refreshTokens.push(refreshToken);
+    
     await user.save();
 
     res.status(200).json({ message: 'OTP verified successfully.', accessToken, refreshToken });
@@ -229,31 +228,53 @@ const resendOtp = async (req, res) => {
 const refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
+
     if (!refreshToken) {
       return res.status(400).json({ message: 'Refresh token required.' });
     }
-    // Verify refresh token
+
     let payload;
     try {
+      // Verify the refresh token's signature and basic validity (including expiry)
       payload = jwt.verify(refreshToken, process.env.JWT_SECRET);
+      // At this point, we know the token is structurally valid and not expired (assuming standard jwt.verify behavior)
+      // You might want to add checks for issuer (iss), audience (aud), or a specific claim if you include one to denote refresh tokens
+      // e.g., if (payload.type !== 'refresh') { return res.status(401).json({ message: 'Invalid token type.' }); }
+
     } catch (err) {
+      console.error("Refresh token verification error:", err.message); // Log for debugging
+      // Differentiate between token expiration and other errors if needed
+      if (err.name === 'TokenExpiredError') {
+         return res.status(401).json({ message: 'Refresh token expired.' });
+      }
+      // Covers JsonWebTokenError (invalid signature, malformed, etc.) and other potential errors
       return res.status(401).json({ message: 'Invalid refresh token.' });
     }
-    // Find user and check if refresh token is still valid
+
+    // If verification is successful, find the user associated with the token
+    // This confirms the user still exists
     const user = await User.findById(payload.id);
-    if (!user || !user.refreshTokens || !user.refreshTokens.includes(refreshToken)) {
-      return res.status(401).json({ message: 'Refresh token not recognized.' });
+    if (!user) {
+      // The user ID in the token is not valid (user might have been deleted)
+      // Consider if you want to return 401 or 404 here. 401 is often used for auth failures.
+      return res.status(401).json({ message: 'User associated with token not found.' });
     }
-    // Generate new access token
-    const accessToken = jwt.sign(
-      { id: user._id, role: user.role },
+
+    // User exists and token is valid. Generate a new access token for the user.
+    const newAccessToken = jwt.sign(
+      { id: user._id, role: user.role }, // Include necessary user info
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '1d' } // Match your access token expiry time
     );
-    res.status(200).json({ accessToken });
+
+    // Send back only the new access token
+    // Optionally, you could also send back user details like role if the frontend needs them
+    res.status(200).json({ accessToken: newAccessToken });
+
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Failed to refresh token.' });
+    // Catch any unexpected server errors during the process
+    console.error("Unexpected error in refreshToken controller:", err);
+    res.status(500).json({ message: 'Failed to refresh token due to a server error.' });
   }
 };
 

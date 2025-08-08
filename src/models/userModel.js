@@ -18,7 +18,6 @@ const userSchema = new mongoose.Schema({
   },
   profilePhotoUrl: String,
   createdAt: { type: Date, default: Date.now },
-  refreshTokens: [String] // Store multiple refresh tokens per user
 });
 
 userSchema.index({ "address.location": "2dsphere" });
