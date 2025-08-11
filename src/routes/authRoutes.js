@@ -20,6 +20,8 @@ router.post("/register-instructor-initiate", upload.fields([
 router.post("/register-instructor-verify", authController.registerInstructorVerify);
 // Login (for both roles)
 router.post("/login", login);
+
+router.post("/verify-token", authController.verifyToken);
 // Refresh token endpoint
 router.post("/refresh-token", refreshToken);
 // Resend OTP

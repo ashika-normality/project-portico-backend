@@ -224,6 +224,26 @@ const resendOtp = async (req, res) => {
   }
 };
 
+const verifyToken = async (req, res) => {
+  try {
+    const token = req.body.token || req.query.token || req.headers['x-access-token'];
+    if (!token) {
+      return res.status(403).json({ message: 'No token provided.' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+      if (err) {
+        return res.status(401).json({ message: 'Unauthorized! Invalid token.' });
+      }
+      req.user = decoded;
+      res.status(200).json({ message: 'Token is valid.', user: req.user });
+    });
+  } catch (err) {
+    console.error("Error verifying token:", err);
+    res.status(500).json({ message: 'Failed to verify token.' });
+  }
+};
+
 // Refresh token endpoint
 const refreshToken = async (req, res) => {
   try {
@@ -420,6 +440,7 @@ module.exports = {
   sendOtp,
   verifyOtp,
   resendOtp,
+  verifyToken,
   refreshToken,
   registerInstructorInitiate,
   registerInstructorVerify
