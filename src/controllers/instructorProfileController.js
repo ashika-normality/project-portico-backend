@@ -116,8 +116,7 @@ const saveInstructorProfile = async (req, res) => {
     if (data.mobile) userUpdates.mobile = data.mobile;
     if (data.email) userUpdates.email = data.email; // ⚠️ Only allow if email edits are permitted
     if (data.dob) userUpdates.dob = parseDate(data.dob);
-    if (data.gender) userUpdates.gender = data.gender; // if you add gender to User schema later
-
+    if (data.gender) userUpdates.gender = data.gender; 
     // Update address in User
     if (
       data.address1 || data.address2 || data.city || data.state ||
