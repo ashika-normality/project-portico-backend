@@ -6,14 +6,23 @@ const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   gender: { type: String, enum: ['male', 'female', 'other'] },
-  nickName: { type: String}, // Optional field for instructors
-  dob: { type: Date},
+  nickName: { type: String },
+  dob: {
+    type: Date,
+    required: function () { return this.role === 'instructor'; }
+  },
   email: { type: String, required: true, unique: true },
   mobile: { type: String, required: true },
   address: {
-    line1: String,
+    line1: {
+      type: String,
+      required: function () { return this.role === 'instructor'; }
+    },
+    city: {
+      type: String,
+      required: function () { return this.role === 'instructor'; }
+    },
     line2: String,
-    city: String,
     state: String,
     country: String,
     postcode: String,
@@ -21,19 +30,6 @@ const userSchema = new mongoose.Schema({
   profilePhotoUrl: String,
   createdAt: { type: Date, default: Date.now },
 });
-
-userSchema.pre("save", function (next) {
-  if (this.role === "instructor") {
-    if (!this.dob) {
-      return next(new Error("Instructors must have a date of birth."));
-    }
-    if (!this.address || !this.address.line1 || !this.address.city) {
-      return next(new Error("Instructors must have a valid address."));
-    }
-  }
-  next();
-});
-
 
 userSchema.index({ "address.location": "2dsphere" });
 
