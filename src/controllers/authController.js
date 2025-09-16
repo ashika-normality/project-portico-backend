@@ -10,28 +10,32 @@ const PendingRegistration = require("../models/pendingRegistration");
 // Register a new learner (student)
 const registerLearner = async (req, res) => {
   try {
-    const { firstName, lastName, email, mobile, address } = req.body;
+    const { firstName, lastName, email, mobile } = req.body;
+
     // Check if email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered.' });
     }
+
     // Create new learner user
     const newUser = new User({
       firstName,
       lastName,
       email,
       mobile,
-      address,
       role: 'learner',
     });
+
     await newUser.save();
+
     res.status(201).json({ message: `Learner account for ${email} created successfully!` });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Something went wrong during learner registration.' });
   }
 };
+
 
 // Register a new instructor
 const registerInstructor = async (req, res) => {
