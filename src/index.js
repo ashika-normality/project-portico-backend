@@ -6,26 +6,17 @@ const otpRoutes = require("./routes/otpRoutes");
 const instructorProfileRoutes = require("./routes/instructorProfileRoutes");
 const cors = require('cors');
 
-
-
 const app = express();
-
-
-dbConnect().catch(err => {
-  console.error('Failed to connect to database:', err);
-});
-
 
 // Middleware
 app.use(express.json());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://project-portico-frontend.vercel.app', 'https://xc3kh9zh-3000.inc1.devtunnels.ms'], // Frontend default port
+  origin: ['http://localhost:3000', 'https://project-portico-frontend.vercel.app', 'https://xc3kh9zh-3000.inc1.devtunnels.ms'],
   credentials: true
 }));
 app.use('/uploads', express.static('uploads'));
 
 // Routes
-// Auth routes: /api/auth/register-learner, /api/auth/register-instructor, /api/auth/login
 app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/instructor-profile", instructorProfileRoutes);
@@ -42,6 +33,28 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 7002;
-app.listen(PORT, () => {
-  console.log(`server is running at port ${PORT} API is at http://localhost:${PORT}/api`);
-});
+
+// Start server only after database connection is established
+const startServer = async () => {
+  try {
+    console.log("Connecting to database...");
+    await dbConnect();
+    console.log("Database connected successfully!");
+
+    // TEMPORARY: check all users in the DB
+    const User = require("./models/userModel"); // import User model
+    const users = await User.find({});
+    console.log("Users currently in DB:", users);
+
+    app.listen(PORT, () => {
+      console.log(`Server is running at port ${PORT}`);
+      console.log(`API is at http://localhost:${PORT}/api`);
+    });
+  } catch (error) {
+    console.error('Failed to connect to database:', error);
+    process.exit(1);
+  }
+};
+
+
+startServer();
