@@ -4,6 +4,7 @@ const dbConnect = require("./config/dbConnect");
 const authRoutes = require("./routes/authRoutes");
 const otpRoutes = require("./routes/otpRoutes");
 const instructorProfileRoutes = require("./routes/instructorProfileRoutes");
+const learnerProfileRoutes = require("./routes/learnerProfileRoutes");
 const cors = require('cors');
 
 const app = express();
@@ -16,10 +17,14 @@ app.use(cors({
 }));
 app.use('/uploads', express.static('uploads'));
 
+console.log("✅ Importing learner profile routes...");
+
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/otp", otpRoutes);
 app.use("/api/instructor-profile", instructorProfileRoutes);
+app.use("/api/learner-profile", learnerProfileRoutes);
+
 
 // Test route
 app.get('/', (req, res) => {

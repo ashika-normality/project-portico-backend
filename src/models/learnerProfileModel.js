@@ -9,7 +9,7 @@ const learnerProfileSchema = new mongoose.Schema({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     email: { type: String, required: true },
-    gender: { type: String, enum: ["Male", "Female", "Other"] },
+    gender: { type: String, enum: ["Male", "Female", "Other"]},
     mobile: { type: String, required: true },
     dateOfBirth: { type: Date },
     addressLine1: { type: String },
@@ -33,7 +33,7 @@ const learnerProfileSchema = new mongoose.Schema({
   paymentMethods: [
     {
       cardNumber: { type: String, required: true },
-      expiryDate: { type: Date, required: true },
+      cardExpiryDate: { type: Date, required: true },
       cardHolderName: { type: String, required: true },
       cvv: { type: String, required: true }, 
       cardType: { type: String, enum: ["Visa", "MasterCard", "Amex", "Other"], required: true },
@@ -45,10 +45,10 @@ const learnerProfileSchema = new mongoose.Schema({
   // ---------------- Emergency Contacts ----------------
   emergencyContacts: [
     {
-      name: { type: String, required: true },
-      relationship: { type: String, required: true },
-      phone: { type: String, required: true },
-      email: { type: String, required: true },
+      emergencyName: { type: String, required: true },
+      emergencyRelationship: { type: String, required: true },
+      emergencyPhone: { type: String, required: true },
+      emergencyEmail: { type: String, required: true },
     },
   ],
 
